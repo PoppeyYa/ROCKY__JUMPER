@@ -261,9 +261,9 @@ function endGame() {
 
 function share() {
   const text =
-`I took part in challenge from @IlGrebenuk for the @Seismic community.
+`I took part in challenge from @IlGrebenuk for the @SeismicSys community.
 Here's my record: ${score}
-Try it here too: ${https://poppeyya.github.io/ROCKY__JUMPER/}`;
+Try it here too:  https://poppeyya.github.io/ROCKY__JUMPER/ }`;
 
   window.open(
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
@@ -316,4 +316,5 @@ window.addEventListener("touchstart", e => {
 
 
 renderLeaders();
+
 
