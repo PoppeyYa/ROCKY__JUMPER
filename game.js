@@ -11,7 +11,7 @@ window.addEventListener("resize", resizeCanvas);
 
 /* ---------- CONFIG ---------- */
 
-const GAME_URL = "PASTE_YOUR_GAME_LINK_HERE";
+const GAME_URL = "https://poppeyya.github.io/ROCKY__JUMPER/";
 
 /* ---------- IMAGES ---------- */
 
@@ -316,3 +316,4 @@ window.addEventListener("touchstart", e => {
 
 
 renderLeaders();
+
