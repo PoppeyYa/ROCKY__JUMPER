@@ -263,7 +263,7 @@ function share() {
   const text =
 `I took part in challenge from @IlGrebenuk for the @Seismic community.
 Here's my record: ${score}
-Try it here too: ${GAME_URL}`;
+Try it here too: ${https://poppeyya.github.io/ROCKY__JUMPER/}`;
 
   window.open(
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
@@ -313,5 +313,6 @@ window.addEventListener("touchstart", e => {
   e.preventDefault();
   player.jump();
 }, { passive: false });
+
 
 renderLeaders();
