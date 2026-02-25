@@ -309,13 +309,15 @@ window.addEventListener("keydown", e => {
 
 window.addEventListener("mousedown", () => player.jump());
 
-window.addEventListener("touchstart", e => {
+canvas.addEventListener("touchstart", e => {
+  if (!gameRunning) return;
   e.preventDefault();
   player.jump();
 }, { passive: false });
 
 
 renderLeaders();
+
 
 
 
