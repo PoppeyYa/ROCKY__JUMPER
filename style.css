@@ -1,0 +1,72 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: black;
+}
+
+canvas {
+  display: block;
+  background: radial-gradient(circle at center, #050505, #000);
+}
+
+.menu, .gameover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.95);
+  color: white;
+  z-index: 10;
+}
+
+.hidden {
+  display: none;
+}
+
+h1 {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+input {
+  padding: 12px 24px;
+  font-size: 22px;
+  border-radius: 10px;
+  border: none;
+  margin-bottom: 15px;
+  width: 300px;
+  text-align: center;
+}
+
+button {
+  padding: 12px 35px;
+  font-size: 22px;
+  font-weight: bold;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(45deg, #00ffff, #00aaff);
+  color: black;
+  margin: 10px;
+  transition: 0.2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+}
+
+.leaderboard {
+  margin-top: 30px;
+  text-align: center;
+  font-size: 20px;
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Rocky Jumper</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="menu" class="menu">
+  <h1>ROCKY JUMPER</h1>
+  <input id="nickname" placeholder="Enter your nickname">
+  <button id="playBtn">PLAY</button>
+
+  <div class="leaderboard">
+    <h3>LEADERBOARD</h3>
+    <div id="leaders"></div>
+  </div>
+</div>
+
+<div id="gameover" class="gameover hidden">
+  <h1>GAME OVER</h1>
+  <h2 id="finalScore"></h2>
+  <button id="againBtn">PLAY AGAIN</button>
+  <button id="shareBtn">SHARE</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script src="game.js"></script>
+</body>
+</html>
