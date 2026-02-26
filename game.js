@@ -2,8 +2,15 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 resizeCanvas();
@@ -37,13 +44,11 @@ let gameRunning = false;
 let speed = 6;
 let score = 0;
 
-let lastTime = 0;
-
 /* ---------- PLAYER ---------- */
 
 const player = {
   x: 300,
-  y: canvas.height / 2,
+  y: 0,
   size: 64,
   vy: 0,
 
@@ -72,7 +77,7 @@ class LightPair {
     this.gap = 300;
 
     const minY = 120;
-    const maxY = canvas.height - this.gap - 120;
+    const maxY = canvas.height / (window.devicePixelRatio || 1) - this.gap - 120;
 
     let newGap;
 
@@ -149,7 +154,7 @@ function startGame() {
   score = 0;
   gameRunning = true;
 
-  player.y = canvas.height / 2;
+  player.y = canvas.height / (window.devicePixelRatio || 1) / 2;
   player.vy = 0;
 
   walls = [];
@@ -157,7 +162,7 @@ function startGame() {
   lastGapY = null;
 
   for (let i = 0; i < 4; i++) {
-    spawnWall(canvas.width + i * 600);
+    spawnWall(canvas.width / (window.devicePixelRatio || 1) + i * 600);
   }
 
   music.currentTime = 0;
@@ -179,18 +184,24 @@ function spawnWall(x) {
 
 /* ---------- LOOP ---------- */
 
+let lastTime = 0;
+
 function loop(time) {
   if (!gameRunning) return;
 
-  const dt = (time - lastTime) / 16.666;
+  let dt = (time - lastTime) / 16.666;
   lastTime = time;
+  dt = Math.min(dt, 2);
 
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
   player.update(dt);
   player.draw();
 
-  if (player.y + player.size >= canvas.height || player.y <= 0) {
+  if (
+    player.y + player.size >= canvas.height / (window.devicePixelRatio || 1) ||
+    player.y <= 0
+  ) {
     endGame();
     return;
   }
@@ -223,7 +234,7 @@ function loop(time) {
   if (walls.length && walls[0].x + walls[0].width < -100) {
     walls.shift();
     crystals.shift();
-    spawnWall(canvas.width + 400);
+    spawnWall(canvas.width / (window.devicePixelRatio || 1) + 400);
   }
 
   drawHUD();
@@ -269,7 +280,7 @@ function share() {
   const text =
 `I took part in @IlGrebenuk's challenge for the @Seismic community.
 Here's my record: ${score}
-Try it here too: https://poppeya.github.io/ROCKY_JUMPER/`;
+Try it here too: ${GAME_URL}`;
 
   window.open(
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
@@ -313,7 +324,9 @@ window.addEventListener("keydown", e => {
   if (e.code === "Space") player.jump();
 });
 
-window.addEventListener("mousedown", () => player.jump());
+window.addEventListener("mousedown", () => {
+  if (gameRunning) player.jump();
+});
 
 canvas.addEventListener("touchstart", e => {
   if (!gameRunning) return;
@@ -322,6 +335,3 @@ canvas.addEventListener("touchstart", e => {
 }, { passive: false });
 
 renderLeaders();
-
-
-
