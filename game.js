@@ -1,26 +1,14 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-const BASE_WIDTH = 1920;
-const BASE_HEIGHT = 1080;
-
-let scale = 1;
-
-/* ---------- RESIZE ---------- */
-
 function resizeCanvas() {
-  scale = Math.min(
-    window.innerWidth / BASE_WIDTH,
-    window.innerHeight / BASE_HEIGHT
-  );
-
-  canvas.style.width = BASE_WIDTH * scale + "px";
-  canvas.style.height = BASE_HEIGHT * scale + "px";
-
   const dpr = window.devicePixelRatio || 1;
 
-  canvas.width = BASE_WIDTH * dpr;
-  canvas.height = BASE_HEIGHT * dpr;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
@@ -53,14 +41,14 @@ music.volume = 0.4;
 
 let nickname = "Player";
 let gameRunning = false;
-let speed = 7;
+let speed = 6;
 let score = 0;
 
 /* ---------- PLAYER ---------- */
 
 const player = {
   x: 300,
-  y: BASE_HEIGHT / 2,
+  y: 0,
   size: 64,
   vy: 0,
 
@@ -80,24 +68,30 @@ const player = {
 
 /* ---------- WALLS ---------- */
 
-let lastGapY = BASE_HEIGHT / 2;
+let lastGapY = null;
 
 class LightPair {
   constructor(x) {
     this.x = x;
     this.width = 260;
-    this.gap = 320;
+    this.gap = 300;
 
     const minY = 120;
-    const maxY = BASE_HEIGHT - this.gap - 120;
+    const maxY = canvas.height / (window.devicePixelRatio || 1) - this.gap - 120;
 
-    let shift = (Math.random() * 2 - 1) * 420;
-    let newGap = lastGapY + shift;
+    let newGap;
 
-    newGap = Math.max(minY, Math.min(maxY, newGap));
+    if (lastGapY === null) {
+      newGap = minY + Math.random() * (maxY - minY);
+    } else {
+      const direction = Math.random() < 0.5 ? -1 : 1;
+      const minShift = 220;
+      const maxShift = 480;
 
-    if (Math.abs(newGap - lastGapY) < 220) {
-      newGap += newGap > lastGapY ? 260 : -260;
+      let shift = direction * (minShift + Math.random() * (maxShift - minShift));
+      newGap = lastGapY + shift;
+
+      newGap = Math.max(minY, Math.min(maxY, newGap));
     }
 
     this.gapY = newGap;
@@ -112,7 +106,7 @@ class LightPair {
   draw() {
     ctx.fillStyle = "rgba(255,255,160,0.9)";
     ctx.fillRect(this.x, 0, this.width, this.gapY);
-    ctx.fillRect(this.x, this.gapY + this.gap, this.width, BASE_HEIGHT);
+    ctx.fillRect(this.x, this.gapY + this.gap, this.width, canvas.height);
   }
 }
 
@@ -156,19 +150,19 @@ function startGame() {
   document.getElementById("menu").classList.add("hidden");
   document.getElementById("gameover").classList.add("hidden");
 
-  speed = 7;
+  speed = 6;
   score = 0;
   gameRunning = true;
 
-  player.y = BASE_HEIGHT / 2;
+  player.y = canvas.height / (window.devicePixelRatio || 1) / 2;
   player.vy = 0;
 
   walls = [];
   crystals = [];
-  lastGapY = BASE_HEIGHT / 2;
+  lastGapY = null;
 
   for (let i = 0; i < 4; i++) {
-    spawnWall(BASE_WIDTH + i * 650);
+    spawnWall(canvas.width / (window.devicePixelRatio || 1) + i * 600);
   }
 
   music.currentTime = 0;
@@ -199,12 +193,15 @@ function loop(time) {
   lastTime = time;
   dt = Math.min(dt, 2);
 
-  ctx.drawImage(bgImg, 0, 0, BASE_WIDTH, BASE_HEIGHT);
+  ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
   player.update(dt);
   player.draw();
 
-  if (player.y + player.size >= BASE_HEIGHT || player.y <= 0) {
+  if (
+    player.y + player.size >= canvas.height / (window.devicePixelRatio || 1) ||
+    player.y <= 0
+  ) {
     endGame();
     return;
   }
@@ -234,10 +231,10 @@ function loop(time) {
     }
   }
 
-  if (walls.length && walls[0].x + walls[0].width < -200) {
+  if (walls.length && walls[0].x + walls[0].width < -100) {
     walls.shift();
     crystals.shift();
-    spawnWall(BASE_WIDTH + 600);
+    spawnWall(canvas.width / (window.devicePixelRatio || 1) + 400);
   }
 
   drawHUD();
@@ -272,7 +269,6 @@ function endGame() {
   gameRunning = false;
   music.pause();
   saveScore();
-
   document.getElementById("finalScore").innerText =
     `${nickname} — ${score}`;
   document.getElementById("gameover").classList.remove("hidden");
