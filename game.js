@@ -37,6 +37,8 @@ let gameRunning = false;
 let speed = 6;
 let score = 0;
 
+let lastTime = 0;
+
 /* ---------- PLAYER ---------- */
 
 const player = {
@@ -49,9 +51,9 @@ const player = {
     this.vy = -14;
   },
 
-  update() {
-    this.vy += 0.7;
-    this.y += this.vy;
+  update(dt) {
+    this.vy += 0.7 * dt;
+    this.y += this.vy * dt;
   },
 
   draw() {
@@ -92,8 +94,8 @@ class LightPair {
     this.passed = false;
   }
 
-  update() {
-    this.x -= speed;
+  update(dt) {
+    this.x -= speed * dt;
   }
 
   draw() {
@@ -113,8 +115,8 @@ class Crystal {
     this.collected = false;
   }
 
-  update() {
-    this.x -= speed;
+  update(dt) {
+    this.x -= speed * dt;
   }
 
   draw() {
@@ -161,6 +163,7 @@ function startGame() {
   music.currentTime = 0;
   music.play();
 
+  lastTime = performance.now();
   requestAnimationFrame(loop);
 }
 
@@ -176,12 +179,15 @@ function spawnWall(x) {
 
 /* ---------- LOOP ---------- */
 
-function loop() {
+function loop(time) {
   if (!gameRunning) return;
+
+  const dt = (time - lastTime) / 16.666;
+  lastTime = time;
 
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-  player.update();
+  player.update(dt);
   player.draw();
 
   if (player.y + player.size >= canvas.height || player.y <= 0) {
@@ -190,7 +196,7 @@ function loop() {
   }
 
   for (const w of walls) {
-    w.update();
+    w.update(dt);
     w.draw();
 
     if (collision(player, w)) {
@@ -206,7 +212,7 @@ function loop() {
   }
 
   for (const c of crystals) {
-    c.update();
+    c.update(dt);
     c.draw();
     if (!c.collected && collect(player, c)) {
       c.collected = true;
@@ -315,9 +321,7 @@ canvas.addEventListener("touchstart", e => {
   player.jump();
 }, { passive: false });
 
-
 renderLeaders();
-
 
 
 
