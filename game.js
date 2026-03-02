@@ -1,9 +1,28 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+const BASE_WIDTH = 1920;
+const BASE_HEIGHT = 1080;
+
+let scale = 1;
+
+/* ---------- RESIZE ---------- */
+
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  scale = Math.min(
+    window.innerWidth / BASE_WIDTH,
+    window.innerHeight / BASE_HEIGHT
+  );
+
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = BASE_WIDTH * dpr;
+  canvas.height = BASE_HEIGHT * dpr;
+
+  canvas.style.width = BASE_WIDTH * scale + "px";
+  canvas.style.height = BASE_HEIGHT * scale + "px";
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 resizeCanvas();
@@ -34,16 +53,14 @@ music.volume = 0.4;
 
 let nickname = "Player";
 let gameRunning = false;
-let speed = 6;
+let speed = 7;
 let score = 0;
-
-let lastTime = 0;
 
 /* ---------- PLAYER ---------- */
 
 const player = {
   x: 300,
-  y: canvas.height / 2,
+  y: BASE_HEIGHT / 2,
   size: 64,
   vy: 0,
 
@@ -63,30 +80,24 @@ const player = {
 
 /* ---------- WALLS ---------- */
 
-let lastGapY = null;
+let lastGapY = BASE_HEIGHT / 2;
 
 class LightPair {
   constructor(x) {
     this.x = x;
     this.width = 260;
-    this.gap = 300;
+    this.gap = 320;
 
-    const minY = 120;
-    const maxY = canvas.height - this.gap - 120;
+    const minY = 140;
+    const maxY = BASE_HEIGHT - this.gap - 140;
 
-    let newGap;
+    let shift = (Math.random() * 2 - 1) * 450;
+    let newGap = lastGapY + shift;
 
-    if (lastGapY === null) {
-      newGap = minY + Math.random() * (maxY - minY);
-    } else {
-      const direction = Math.random() < 0.5 ? -1 : 1;
-      const minShift = 220;
-      const maxShift = 480;
+    newGap = Math.max(minY, Math.min(maxY, newGap));
 
-      let shift = direction * (minShift + Math.random() * (maxShift - minShift));
-      newGap = lastGapY + shift;
-
-      newGap = Math.max(minY, Math.min(maxY, newGap));
+    if (Math.abs(newGap - lastGapY) < 250) {
+      newGap += newGap > lastGapY ? 280 : -280;
     }
 
     this.gapY = newGap;
@@ -101,7 +112,7 @@ class LightPair {
   draw() {
     ctx.fillStyle = "rgba(255,255,160,0.9)";
     ctx.fillRect(this.x, 0, this.width, this.gapY);
-    ctx.fillRect(this.x, this.gapY + this.gap, this.width, canvas.height);
+    ctx.fillRect(this.x, this.gapY + this.gap, this.width, BASE_HEIGHT);
   }
 }
 
@@ -145,19 +156,19 @@ function startGame() {
   document.getElementById("menu").classList.add("hidden");
   document.getElementById("gameover").classList.add("hidden");
 
-  speed = 6;
+  speed = 7;
   score = 0;
   gameRunning = true;
 
-  player.y = canvas.height / 2;
+  player.y = BASE_HEIGHT / 2;
   player.vy = 0;
 
   walls = [];
   crystals = [];
-  lastGapY = null;
+  lastGapY = BASE_HEIGHT / 2;
 
   for (let i = 0; i < 4; i++) {
-    spawnWall(canvas.width + i * 600);
+    spawnWall(BASE_WIDTH + i * 650);
   }
 
   music.currentTime = 0;
@@ -179,18 +190,21 @@ function spawnWall(x) {
 
 /* ---------- LOOP ---------- */
 
+let lastTime = 0;
+
 function loop(time) {
   if (!gameRunning) return;
 
-  const dt = (time - lastTime) / 16.666;
+  let dt = (time - lastTime) / 16.666;
   lastTime = time;
+  dt = Math.min(dt, 2);
 
-  ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bgImg, 0, 0, BASE_WIDTH, BASE_HEIGHT);
 
   player.update(dt);
   player.draw();
 
-  if (player.y + player.size >= canvas.height || player.y <= 0) {
+  if (player.y + player.size >= BASE_HEIGHT || player.y <= 0) {
     endGame();
     return;
   }
@@ -220,10 +234,10 @@ function loop(time) {
     }
   }
 
-  if (walls.length && walls[0].x + walls[0].width < -100) {
+  if (walls.length && walls[0].x + walls[0].width < -300) {
     walls.shift();
     crystals.shift();
-    spawnWall(canvas.width + 400);
+    spawnWall(BASE_WIDTH + 650);
   }
 
   drawHUD();
@@ -258,6 +272,7 @@ function endGame() {
   gameRunning = false;
   music.pause();
   saveScore();
+
   document.getElementById("finalScore").innerText =
     `${nickname} — ${score}`;
   document.getElementById("gameover").classList.remove("hidden");
@@ -269,7 +284,7 @@ function share() {
   const text =
 `I took part in @IlGrebenuk's challenge for the @Seismic community.
 Here's my record: ${score}
-Try it here too: https://poppeya.github.io/ROCKY_JUMPER/`;
+Try it here too: ${GAME_URL}`;
 
   window.open(
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
@@ -313,7 +328,9 @@ window.addEventListener("keydown", e => {
   if (e.code === "Space") player.jump();
 });
 
-window.addEventListener("mousedown", () => player.jump());
+window.addEventListener("mousedown", () => {
+  if (gameRunning) player.jump();
+});
 
 canvas.addEventListener("touchstart", e => {
   if (!gameRunning) return;
