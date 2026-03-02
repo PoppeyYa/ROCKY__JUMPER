@@ -21,18 +21,18 @@ window.addEventListener("resize", resizeCanvas);
 
 let gameRunning = false;
 let score = 0;
-let speed = 320;
+let speed = 340;
 let lastTime = 0;
-
-const GRAVITY = 1700;
-const JUMP = -600;
 
 /* ---------- PLAYER ---------- */
 
-const player = {
-  x: 260,
+const GRAVITY = 1800;
+const JUMP = -650;
+
+RememberPlayer = {
+  x: 240,
   y: BASE_H / 2,
-  size: 58,
+  size: 56,
   vy: 0,
 
   reset() {
@@ -55,18 +55,19 @@ const player = {
   }
 };
 
+const player = RememberPlayer;
+
 /* ---------- WALLS ---------- */
 
-const GAP_SIZE = 260;
-const WALL_WIDTH = 170;
-const WALL_DISTANCE = 460;
+const GAP_SIZE = 270;
+const WALL_WIDTH = 160;
+const WALL_DISTANCE = 520;
 
 class Wall {
   constructor(x) {
     this.x = x;
-    this.width = WALL_WIDTH;
 
-    const margin = 90;
+    const margin = 80;
     this.gapY =
       margin +
       Math.random() * (BASE_H - GAP_SIZE - margin * 2);
@@ -74,7 +75,6 @@ class Wall {
     this.topHeight = this.gapY;
     this.bottomY = this.gapY + GAP_SIZE;
     this.bottomHeight = BASE_H - this.bottomY;
-
     this.passed = false;
   }
 
@@ -83,36 +83,45 @@ class Wall {
   }
 
   draw() {
-    ctx.fillStyle = "rgba(255,255,160,0.9)";
-    ctx.fillRect(this.x, 0, this.width, this.topHeight);
-    ctx.fillRect(this.x, this.bottomY, this.width, this.bottomHeight);
+    ctx.fillStyle = "rgba(255,255,160,0.95)";
+    ctx.fillRect(this.x, 0, WALL_WIDTH, this.topHeight);
+    ctx.fillRect(this.x, this.bottomY, WALL_WIDTH, this.bottomHeight);
   }
 }
 
-/* ---------- ARRAYS ---------- */
+/* ---------- WALL SYSTEM ---------- */
 
 let walls = [];
+
+function resetWalls() {
+  walls = [];
+  let startX = BASE_W + 300;
+  for (let i = 0; i < 4; i++) {
+    walls.push(new Wall(startX + i * WALL_DISTANCE));
+  }
+}
+
+function updateWalls(dt) {
+  for (let w of walls) w.update(dt);
+
+  if (walls[0].x + WALL_WIDTH < -200) {
+    walls.shift();
+    const lastX = walls[walls.length - 1].x;
+    walls.push(new Wall(lastX + WALL_DISTANCE));
+  }
+}
 
 /* ---------- GAME FLOW ---------- */
 
 function startGame() {
   score = 0;
-  speed = 320;
+  speed = 340;
   gameRunning = true;
-
   player.reset();
-  walls = [];
-
-  for (let i = 0; i < 4; i++) {
-    spawnWall(BASE_W + i * WALL_DISTANCE);
-  }
+  resetWalls();
 
   lastTime = performance.now();
   requestAnimationFrame(loop);
-}
-
-function spawnWall(x) {
-  walls.push(new Wall(x));
 }
 
 function loop(time) {
@@ -126,15 +135,15 @@ function loop(time) {
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
   player.update(dt);
-  player.draw();
 
   if (player.y < 0 || player.y + player.size > BASE_H) {
     endGame();
     return;
   }
 
+  updateWalls(dt);
+
   for (const w of walls) {
-    w.update(dt);
     w.draw();
 
     if (hitWall(player, w)) {
@@ -142,18 +151,14 @@ function loop(time) {
       return;
     }
 
-    if (!w.passed && w.x + w.width < player.x) {
+    if (!w.passed && w.x + WALL_WIDTH < player.x) {
       w.passed = true;
       score++;
-      if (score % 6 === 0) speed += 35;
+      if (score % 6 === 0) speed += 30;
     }
   }
 
-  if (walls[0].x + WALL_WIDTH < -200) {
-    walls.shift();
-    spawnWall(walls[walls.length - 1].x + WALL_DISTANCE);
-  }
-
+  player.draw();
   drawHUD();
 
   requestAnimationFrame(loop);
@@ -162,7 +167,7 @@ function loop(time) {
 /* ---------- COLLISION ---------- */
 
 function hitWall(p, w) {
-  if (p.x + p.size < w.x || p.x > w.x + w.width) return false;
+  if (p.x + p.size < w.x || p.x > w.x + WALL_WIDTH) return false;
   if (p.y < w.gapY || p.y + p.size > w.bottomY) return true;
   return false;
 }
