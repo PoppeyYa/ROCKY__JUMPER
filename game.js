@@ -30,31 +30,23 @@ music.volume = 0.4;
 let nickname = "Player";
 let gameRunning = false;
 let score = 0;
-
-let speed = 420; // px per second
-
+let speed = 350;
 let lastTime = 0;
-
-/* ---------- SCALE ---------- */
-
-function scale(v) {
-  return v * (canvas.height / 900);
-}
 
 /* ---------- PLAYER ---------- */
 
 const player = {
   x: () => canvas.width * 0.25,
   y: canvas.height / 2,
-  size: scale(70),
+  size: 64,
   vy: 0,
 
   jump() {
-    this.vy = -scale(550);
+    this.vy = -520;
   },
 
   update(dt) {
-    this.vy += scale(1800) * dt;
+    this.vy += 1600 * dt;
     this.y += this.vy * dt;
   },
 
@@ -70,18 +62,18 @@ let lastGapY = null;
 class LightPair {
   constructor(x) {
     this.x = x;
-    this.width = scale(200);
-    this.gap = scale(280);
+    this.width = 200;
+    this.gap = canvas.height * 0.35;
 
-    const minY = scale(120);
-    const maxY = canvas.height - this.gap - scale(120);
+    const minY = 120;
+    const maxY = canvas.height - this.gap - 120;
 
     let newGap;
 
     if (lastGapY === null) {
       newGap = minY + Math.random() * (maxY - minY);
     } else {
-      const shift = (Math.random() * 2 - 1) * scale(320);
+      const shift = (Math.random() * 2 - 1) * canvas.height * 0.25;
       newGap = lastGapY + shift;
       newGap = Math.max(minY, Math.min(maxY, newGap));
     }
@@ -108,7 +100,7 @@ class Crystal {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.size = scale(40);
+    this.size = 36;
     this.collected = false;
   }
 
@@ -157,7 +149,7 @@ function startGame() {
   document.getElementById("gameover").classList.add("hidden");
 
   score = 0;
-  speed = 420;
+  speed = 350;
   gameRunning = true;
 
   player.y = canvas.height / 2;
@@ -208,7 +200,7 @@ function loop(t) {
     if (!w.passed && w.x + w.width < player.x()) {
       w.passed = true;
       score++;
-      if (score % 5 === 0) speed += 45;
+      if (score % 5 === 0) speed += 35;
     }
   }
 
@@ -242,15 +234,15 @@ function collision(p, w) {
 function collect(p, c) {
   const dx = p.x() + p.size / 2 - c.x;
   const dy = p.y + p.size / 2 - c.y;
-  return Math.sqrt(dx * dx + dy * dy) < scale(45);
+  return Math.sqrt(dx * dx + dy * dy) < 40;
 }
 
 /* ---------- HUD ---------- */
 
 function drawHUD() {
   ctx.fillStyle = "white";
-  ctx.font = `${scale(34)}px Arial`;
-  ctx.fillText(`Score: ${score}`, scale(30), scale(50));
+  ctx.font = "36px Arial";
+  ctx.fillText(`Score: ${score}`, 40, 60);
 }
 
 /* ---------- GAME OVER ---------- */
