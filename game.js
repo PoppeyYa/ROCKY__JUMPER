@@ -29,7 +29,7 @@ let lastTime = 0;
 const GRAVITY = 1800;
 const JUMP = -650;
 
-RememberPlayer = {
+const player = {
   x: 240,
   y: BASE_H / 2,
   size: 56,
@@ -55,19 +55,20 @@ RememberPlayer = {
   }
 };
 
-const player = RememberPlayer;
-
 /* ---------- WALLS ---------- */
 
 const GAP_SIZE = 270;
 const WALL_WIDTH = 160;
 const WALL_DISTANCE = 520;
 
-class Wall {
-  constructor(x) {
-    this.x = x;
+let wallIndex = 0;
 
-    const margin = 80;
+class Wall {
+  constructor(index) {
+    this.index = index;
+    this.x = BASE_W + index * WALL_DISTANCE;
+
+    const margin = 90;
     this.gapY =
       margin +
       Math.random() * (BASE_H - GAP_SIZE - margin * 2);
@@ -95,19 +96,19 @@ let walls = [];
 
 function resetWalls() {
   walls = [];
-  let startX = BASE_W + 300;
+  wallIndex = 0;
+
   for (let i = 0; i < 4; i++) {
-    walls.push(new Wall(startX + i * WALL_DISTANCE));
+    walls.push(new Wall(wallIndex++));
   }
 }
 
 function updateWalls(dt) {
-  for (let w of walls) w.update(dt);
+  for (const w of walls) w.update(dt);
 
   if (walls[0].x + WALL_WIDTH < -200) {
     walls.shift();
-    const lastX = walls[walls.length - 1].x;
-    walls.push(new Wall(lastX + WALL_DISTANCE));
+    walls.push(new Wall(wallIndex++));
   }
 }
 
