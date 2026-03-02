@@ -17,22 +17,37 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-/* ---------- GAME ---------- */
+/* ---------- ASSETS ---------- */
+
+const bgImg = new Image();
+bgImg.src = "assets/bg.png";
+
+const playerImg = new Image();
+playerImg.src = "assets/player.png";
+
+const crystalImg = new Image();
+crystalImg.src = "assets/crystal.png";
+
+const music = new Audio("assets/music.mp3");
+music.loop = true;
+music.volume = 0.4;
+
+/* ---------- GAME STATE ---------- */
 
 let gameRunning = false;
 let score = 0;
-let speed = 340;
+let speed = 300;
 let lastTime = 0;
+
+const GRAVITY = 1500;
+const JUMP = -500;
 
 /* ---------- PLAYER ---------- */
 
-const GRAVITY = 1800;
-const JUMP = -650;
-
 const player = {
-  x: 240,
+  x: 250,
   y: BASE_H / 2,
-  size: 56,
+  size: 60,
   vy: 0,
 
   reset() {
@@ -50,32 +65,21 @@ const player = {
   },
 
   draw() {
-    ctx.fillStyle = "#FFD400";
-    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.drawImage(playerImg, this.x, this.y, this.size, this.size);
   }
 };
 
 /* ---------- WALLS ---------- */
 
-const GAP_SIZE = 270;
-const WALL_WIDTH = 160;
-const WALL_DISTANCE = 520;
-
-let wallIndex = 0;
-
 class Wall {
-  constructor(index) {
-    this.index = index;
-    this.x = BASE_W + index * WALL_DISTANCE;
+  constructor(x) {
+    this.x = x;
+    this.width = 180;
+    this.gap = 260;
 
-    const margin = 90;
-    this.gapY =
-      margin +
-      Math.random() * (BASE_H - GAP_SIZE - margin * 2);
+    const margin = 100;
+    this.gapY = margin + Math.random() * (BASE_H - this.gap - margin * 2);
 
-    this.topHeight = this.gapY;
-    this.bottomY = this.gapY + GAP_SIZE;
-    this.bottomHeight = BASE_H - this.bottomY;
     this.passed = false;
   }
 
@@ -84,45 +88,70 @@ class Wall {
   }
 
   draw() {
-    ctx.fillStyle = "rgba(255,255,160,0.95)";
-    ctx.fillRect(this.x, 0, WALL_WIDTH, this.topHeight);
-    ctx.fillRect(this.x, this.bottomY, WALL_WIDTH, this.bottomHeight);
+    ctx.fillStyle = "rgba(255,255,160,0.9)";
+    ctx.fillRect(this.x, 0, this.width, this.gapY);
+    ctx.fillRect(this.x, this.gapY + this.gap, this.width, BASE_H);
   }
 }
 
-/* ---------- WALL SYSTEM ---------- */
+/* ---------- CRYSTALS ---------- */
+
+class Crystal {
+  constructor(wall) {
+    this.x = wall.x + wall.width / 2;
+    this.y = wall.gapY + wall.gap / 2;
+    this.size = 36;
+    this.collected = false;
+  }
+
+  update(dt) {
+    this.x -= speed * dt;
+  }
+
+  draw() {
+    if (!this.collected) {
+      ctx.drawImage(
+        crystalImg,
+        this.x - this.size / 2,
+        this.y - this.size / 2,
+        this.size,
+        this.size
+      );
+    }
+  }
+}
+
+/* ---------- ARRAYS ---------- */
 
 let walls = [];
+let crystals = [];
 
-function resetWalls() {
-  walls = [];
-  wallIndex = 0;
-
-  for (let i = 0; i < 4; i++) {
-    walls.push(new Wall(wallIndex++));
-  }
-}
-
-function updateWalls(dt) {
-  for (const w of walls) w.update(dt);
-
-  if (walls[0].x + WALL_WIDTH < -200) {
-    walls.shift();
-    walls.push(new Wall(wallIndex++));
-  }
-}
-
-/* ---------- GAME FLOW ---------- */
+/* ---------- GAME ---------- */
 
 function startGame() {
   score = 0;
-  speed = 340;
+  speed = 300;
   gameRunning = true;
+
   player.reset();
-  resetWalls();
+  walls = [];
+  crystals = [];
+
+  for (let i = 0; i < 4; i++) {
+    spawnWall(BASE_W + i * 450);
+  }
+
+  music.currentTime = 0;
+  music.play();
 
   lastTime = performance.now();
   requestAnimationFrame(loop);
+}
+
+function spawnWall(x) {
+  const w = new Wall(x);
+  walls.push(w);
+  crystals.push(new Crystal(w));
 }
 
 function loop(time) {
@@ -132,19 +161,19 @@ function loop(time) {
   lastTime = time;
 
   ctx.clearRect(0, 0, BASE_W, BASE_H);
-  ctx.fillStyle = "#8c5a6d";
-  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.drawImage(bgImg, 0, 0, BASE_W, BASE_H);
 
   player.update(dt);
+  player.draw();
 
   if (player.y < 0 || player.y + player.size > BASE_H) {
     endGame();
     return;
   }
 
-  updateWalls(dt);
-
-  for (const w of walls) {
+  for (let i = 0; i < walls.length; i++) {
+    const w = walls[i];
+    w.update(dt);
     w.draw();
 
     if (hitWall(player, w)) {
@@ -152,25 +181,45 @@ function loop(time) {
       return;
     }
 
-    if (!w.passed && w.x + WALL_WIDTH < player.x) {
+    if (!w.passed && w.x + w.width < player.x) {
       w.passed = true;
       score++;
-      if (score % 6 === 0) speed += 30;
+      if (score % 5 === 0) speed += 40;
     }
   }
 
-  player.draw();
+  for (const c of crystals) {
+    c.update(dt);
+    c.draw();
+    if (!c.collected && hitCrystal(player, c)) {
+      c.collected = true;
+      score++;
+    }
+  }
+
+  if (walls[0].x + walls[0].width < -200) {
+    walls.shift();
+    crystals.shift();
+    spawnWall(BASE_W + 400);
+  }
+
   drawHUD();
 
   requestAnimationFrame(loop);
 }
 
-/* ---------- COLLISION ---------- */
+/* ---------- COLLISIONS ---------- */
 
 function hitWall(p, w) {
-  if (p.x + p.size < w.x || p.x > w.x + WALL_WIDTH) return false;
-  if (p.y < w.gapY || p.y + p.size > w.bottomY) return true;
+  if (p.x + p.size < w.x || p.x > w.x + w.width) return false;
+  if (p.y < w.gapY || p.y + p.size > w.gapY + w.gap) return true;
   return false;
+}
+
+function hitCrystal(p, c) {
+  const dx = p.x + p.size / 2 - c.x;
+  const dy = p.y + p.size / 2 - c.y;
+  return Math.hypot(dx, dy) < 45;
 }
 
 /* ---------- HUD ---------- */
@@ -185,6 +234,7 @@ function drawHUD() {
 
 function endGame() {
   gameRunning = false;
+  music.pause();
   document.getElementById("finalScore").innerText = score;
   document.getElementById("gameover").classList.remove("hidden");
 }
@@ -202,11 +252,7 @@ window.addEventListener("mousedown", () => {
   if (gameRunning) player.jump();
 });
 
-canvas.addEventListener(
-  "touchstart",
-  e => {
-    e.preventDefault();
-    if (gameRunning) player.jump();
-  },
-  { passive: false }
-);
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  if (gameRunning) player.jump();
+}, { passive: false });
