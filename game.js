@@ -1,12 +1,11 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-/* ---------- RESIZE ---------- */
-
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
+
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
@@ -35,31 +34,24 @@ music.volume = 0.4;
 
 let nickname = "Player";
 let gameRunning = false;
+let speed = 3;
 let score = 0;
-
-let lastTime = 0;
-let baseSpeed = 420; // px per second
 
 /* ---------- PLAYER ---------- */
 
 const player = {
   x: 300,
-  y: 0,
+  y: canvas.height / 2,
   size: 64,
   vy: 0,
 
-  reset() {
-    this.y = canvas.height / 2;
-    this.vy = 0;
-  },
-
   jump() {
-    this.vy = -700;
+    this.vy = -14;
   },
 
-  update(dt) {
-    this.vy += 1800 * dt;
-    this.y += this.vy * dt;
+  update() {
+    this.vy += 0.7;
+    this.y += this.vy;
   },
 
   draw() {
@@ -69,53 +61,60 @@ const player = {
 
 /* ---------- WALLS ---------- */
 
-const WALL_DISTANCE = 600;
-const WALL_WIDTH = 260;
-const GAP_SIZE = 300;
-
-let wallIndex = 0;
-let walls = [];
-let crystals = [];
+let lastGapY = null;
 
 class LightPair {
-  constructor(index) {
-    this.index = index;
-    this.width = WALL_WIDTH;
-    this.x = canvas.width + index * WALL_DISTANCE;
+  constructor(x) {
+    this.x = x;
+    this.width = 260;
+    this.gap = 300;
 
     const minY = 120;
-    const maxY = canvas.height - GAP_SIZE - 120;
-    this.gapY = minY + Math.random() * (maxY - minY);
+    const maxY = canvas.height - this.gap - 120;
 
+    let newGap;
+
+    if (lastGapY === null) {
+      newGap = minY + Math.random() * (maxY - minY);
+    } else {
+      const direction = Math.random() < 0.5 ? -1 : 1;
+      const minShift = 220;
+      const maxShift = 480;
+
+      let shift = direction * (minShift + Math.random() * (maxShift - minShift));
+      newGap = lastGapY + shift;
+
+      newGap = Math.max(minY, Math.min(maxY, newGap));
+    }
+
+    this.gapY = newGap;
+    lastGapY = newGap;
     this.passed = false;
   }
 
-  update(dt) {
-    this.x -= baseSpeed * dt;
+  update() {
+    this.x -= speed;
   }
 
   draw() {
     ctx.fillStyle = "rgba(255,255,160,0.9)";
     ctx.fillRect(this.x, 0, this.width, this.gapY);
-    ctx.fillRect(
-      this.x,
-      this.gapY + GAP_SIZE,
-      this.width,
-      canvas.height
-    );
+    ctx.fillRect(this.x, this.gapY + this.gap, this.width, canvas.height);
   }
 }
 
+/* ---------- CRYSTALS ---------- */
+
 class Crystal {
-  constructor(wall) {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
     this.size = 36;
     this.collected = false;
-    this.wall = wall;
   }
 
   update() {
-    this.x = this.wall.x + this.wall.width / 2;
-    this.y = this.wall.gapY + GAP_SIZE / 2;
+    this.x -= speed;
   }
 
   draw() {
@@ -131,6 +130,11 @@ class Crystal {
   }
 }
 
+/* ---------- ARRAYS ---------- */
+
+let walls = [];
+let crystals = [];
+
 /* ---------- START ---------- */
 
 function startGame() {
@@ -139,38 +143,45 @@ function startGame() {
   document.getElementById("menu").classList.add("hidden");
   document.getElementById("gameover").classList.add("hidden");
 
+  speed = 6;
   score = 0;
   gameRunning = true;
-  wallIndex = 0;
+
+  player.y = canvas.height / 2;
+  player.vy = 0;
+
   walls = [];
   crystals = [];
-
-  player.reset();
+  lastGapY = null;
 
   for (let i = 0; i < 4; i++) {
-    const wall = new LightPair(wallIndex++);
-    walls.push(wall);
-    crystals.push(new Crystal(wall));
+    spawnWall(canvas.width + i * 600);
   }
 
   music.currentTime = 0;
   music.play();
 
-  lastTime = performance.now();
   requestAnimationFrame(loop);
+}
+
+/* ---------- SPAWN ---------- */
+
+function spawnWall(x) {
+  const wall = new LightPair(x);
+  walls.push(wall);
+
+  const cy = wall.gapY + wall.gap / 2;
+  crystals.push(new Crystal(x + wall.width / 2, cy));
 }
 
 /* ---------- LOOP ---------- */
 
-function loop(time) {
+function loop() {
   if (!gameRunning) return;
-
-  const dt = (time - lastTime) / 1000;
-  lastTime = time;
 
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-  player.update(dt);
+  player.update();
   player.draw();
 
   if (player.y + player.size >= canvas.height || player.y <= 0) {
@@ -178,9 +189,8 @@ function loop(time) {
     return;
   }
 
-  for (let i = 0; i < walls.length; i++) {
-    const w = walls[i];
-    w.update(dt);
+  for (const w of walls) {
+    w.update();
     w.draw();
 
     if (collision(player, w)) {
@@ -191,6 +201,7 @@ function loop(time) {
     if (!w.passed && w.x + w.width < player.x) {
       w.passed = true;
       score++;
+      if (score % 5 === 0) speed += 0.6;
     }
   }
 
@@ -203,13 +214,10 @@ function loop(time) {
     }
   }
 
-  if (walls[0].x + WALL_WIDTH < -100) {
+  if (walls.length && walls[0].x + walls[0].width < -100) {
     walls.shift();
     crystals.shift();
-
-    const wall = new LightPair(wallIndex++);
-    walls.push(wall);
-    crystals.push(new Crystal(wall));
+    spawnWall(canvas.width + 400);
   }
 
   drawHUD();
@@ -220,7 +228,7 @@ function loop(time) {
 
 function collision(p, w) {
   if (p.x + p.size < w.x || p.x > w.x + w.width) return false;
-  if (p.y < w.gapY || p.y + p.size > w.gapY + GAP_SIZE) return true;
+  if (p.y < w.gapY || p.y + p.size > w.gapY + w.gap) return true;
   return false;
 }
 
@@ -299,13 +307,11 @@ window.addEventListener("keydown", e => {
   if (e.code === "Space") player.jump();
 });
 
-window.addEventListener("mousedown", () => {
-  if (gameRunning) player.jump();
-});
+window.addEventListener("mousedown", () => player.jump());
 
 window.addEventListener("touchstart", e => {
   e.preventDefault();
-  if (gameRunning) player.jump();
+  player.jump();
 }, { passive: false });
 
 renderLeaders();
