@@ -3,86 +3,95 @@ const ctx = canvas.getContext("2d");
 
 /* ---------- RESIZE ---------- */
 
-const BASE_WIDTH = 1280;
-const BASE_HEIGHT = 720;
-
 function resizeCanvas() {
-  const scale = Math.min(
-    window.innerWidth / BASE_WIDTH,
-    window.innerHeight / BASE_HEIGHT
-  );
-
-  canvas.width = BASE_WIDTH * scale;
-  canvas.height = BASE_HEIGHT * scale;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
-
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+
+/* ---------- CONFIG ---------- */
+
+const GAME_URL = "PASTE_YOUR_GAME_LINK_HERE";
+
+/* ---------- IMAGES ---------- */
+
+const bgImg = new Image();
+bgImg.src = "assets/bg.png";
+
+const playerImg = new Image();
+playerImg.src = "assets/player.png";
+
+const crystalImg = new Image();
+crystalImg.src = "assets/crystal.png";
+
+/* ---------- AUDIO ---------- */
+
+const music = new Audio("assets/music.mp3");
+music.loop = true;
+music.volume = 0.4;
 
 /* ---------- GAME STATE ---------- */
 
 let nickname = "Player";
 let gameRunning = false;
-let speed = 6;
 let score = 0;
+
+let lastTime = 0;
+let baseSpeed = 420; // px per second
 
 /* ---------- PLAYER ---------- */
 
 const player = {
   x: 300,
-  y: BASE_HEIGHT / 2,
+  y: 0,
   size: 64,
   vy: 0,
 
-  jump() {
-    this.vy = -14;
+  reset() {
+    this.y = canvas.height / 2;
+    this.vy = 0;
   },
 
-  update() {
-    this.vy += 0.7;
-    this.y += this.vy;
+  jump() {
+    this.vy = -700;
+  },
+
+  update(dt) {
+    this.vy += 1800 * dt;
+    this.y += this.vy * dt;
   },
 
   draw() {
-    ctx.fillStyle = "yellow";
-    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.drawImage(playerImg, this.x, this.y, this.size, this.size);
   }
 };
 
 /* ---------- WALLS ---------- */
 
-const WALL_DISTANCE = 520;
+const WALL_DISTANCE = 600;
+const WALL_WIDTH = 260;
+const GAP_SIZE = 300;
 
-let lastGapY = null;
-let wallCounter = 0;
+let wallIndex = 0;
+let walls = [];
+let crystals = [];
 
 class LightPair {
   constructor(index) {
-    this.x = BASE_WIDTH + index * WALL_DISTANCE;
-    this.width = 260;
-    this.gap = 300;
+    this.index = index;
+    this.width = WALL_WIDTH;
+    this.x = canvas.width + index * WALL_DISTANCE;
 
     const minY = 120;
-    const maxY = BASE_HEIGHT - this.gap - 120;
+    const maxY = canvas.height - GAP_SIZE - 120;
+    this.gapY = minY + Math.random() * (maxY - minY);
 
-    let newGap;
-
-    if (lastGapY === null) {
-      newGap = minY + Math.random() * (maxY - minY);
-    } else {
-      const shift = (Math.random() * 400 - 200);
-      newGap = lastGapY + shift;
-      newGap = Math.max(minY, Math.min(maxY, newGap));
-    }
-
-    this.gapY = newGap;
-    lastGapY = newGap;
     this.passed = false;
   }
 
-  update() {
-    this.x -= speed;
+  update(dt) {
+    this.x -= baseSpeed * dt;
   }
 
   draw() {
@@ -90,16 +99,37 @@ class LightPair {
     ctx.fillRect(this.x, 0, this.width, this.gapY);
     ctx.fillRect(
       this.x,
-      this.gapY + this.gap,
+      this.gapY + GAP_SIZE,
       this.width,
-      BASE_HEIGHT
+      canvas.height
     );
   }
 }
 
-/* ---------- ARRAYS ---------- */
+class Crystal {
+  constructor(wall) {
+    this.size = 36;
+    this.collected = false;
+    this.wall = wall;
+  }
 
-let walls = [];
+  update() {
+    this.x = this.wall.x + this.wall.width / 2;
+    this.y = this.wall.gapY + GAP_SIZE / 2;
+  }
+
+  draw() {
+    if (!this.collected) {
+      ctx.drawImage(
+        crystalImg,
+        this.x - this.size / 2,
+        this.y - this.size / 2,
+        this.size,
+        this.size
+      );
+    }
+  }
+}
 
 /* ---------- START ---------- */
 
@@ -109,43 +139,48 @@ function startGame() {
   document.getElementById("menu").classList.add("hidden");
   document.getElementById("gameover").classList.add("hidden");
 
-  speed = 6;
   score = 0;
   gameRunning = true;
-
-  player.y = BASE_HEIGHT / 2;
-  player.vy = 0;
-
+  wallIndex = 0;
   walls = [];
-  lastGapY = null;
-  wallCounter = 0;
+  crystals = [];
+
+  player.reset();
 
   for (let i = 0; i < 4; i++) {
-    walls.push(new LightPair(wallCounter++));
+    const wall = new LightPair(wallIndex++);
+    walls.push(wall);
+    crystals.push(new Crystal(wall));
   }
 
+  music.currentTime = 0;
+  music.play();
+
+  lastTime = performance.now();
   requestAnimationFrame(loop);
 }
 
 /* ---------- LOOP ---------- */
 
-function loop() {
+function loop(time) {
   if (!gameRunning) return;
 
-  ctx.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
-  ctx.fillStyle = "#8c5a6d";
-  ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+  const dt = (time - lastTime) / 1000;
+  lastTime = time;
 
-  player.update();
+  ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+
+  player.update(dt);
   player.draw();
 
-  if (player.y + player.size >= BASE_HEIGHT || player.y <= 0) {
+  if (player.y + player.size >= canvas.height || player.y <= 0) {
     endGame();
     return;
   }
 
-  for (const w of walls) {
-    w.update();
+  for (let i = 0; i < walls.length; i++) {
+    const w = walls[i];
+    w.update(dt);
     w.draw();
 
     if (collision(player, w)) {
@@ -156,13 +191,25 @@ function loop() {
     if (!w.passed && w.x + w.width < player.x) {
       w.passed = true;
       score++;
-      if (score % 5 === 0) speed += 0.6;
     }
   }
 
-  if (walls[0].x + walls[0].width < -300) {
+  for (const c of crystals) {
+    c.update();
+    c.draw();
+    if (!c.collected && collect(player, c)) {
+      c.collected = true;
+      score++;
+    }
+  }
+
+  if (walls[0].x + WALL_WIDTH < -100) {
     walls.shift();
-    walls.push(new LightPair(wallCounter++));
+    crystals.shift();
+
+    const wall = new LightPair(wallIndex++);
+    walls.push(wall);
+    crystals.push(new Crystal(wall));
   }
 
   drawHUD();
@@ -173,8 +220,14 @@ function loop() {
 
 function collision(p, w) {
   if (p.x + p.size < w.x || p.x > w.x + w.width) return false;
-  if (p.y < w.gapY || p.y + p.size > w.gapY + w.gap) return true;
+  if (p.y < w.gapY || p.y + p.size > w.gapY + GAP_SIZE) return true;
   return false;
+}
+
+function collect(p, c) {
+  const dx = p.x + p.size / 2 - c.x;
+  const dy = p.y + p.size / 2 - c.y;
+  return Math.sqrt(dx * dx + dy * dy) < 40;
 }
 
 /* ---------- HUD ---------- */
@@ -189,15 +242,58 @@ function drawHUD() {
 
 function endGame() {
   gameRunning = false;
+  music.pause();
+  saveScore();
   document.getElementById("finalScore").innerText =
     `${nickname} — ${score}`;
   document.getElementById("gameover").classList.remove("hidden");
+}
+
+/* ---------- SHARE ---------- */
+
+function share() {
+  const text =
+`I took part in challenge from @IlGrebenuk for the @Seismic community.
+Here's my record: ${score}
+Try it here too: ${GAME_URL}`;
+
+  window.open(
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+    "_blank"
+  );
+}
+
+/* ---------- LEADERBOARD ---------- */
+
+function saveScore() {
+  let data = JSON.parse(localStorage.getItem("leaders") || "[]");
+
+  const existing = data.find(d => d.name === nickname);
+
+  if (existing) {
+    if (score > existing.score) existing.score = score;
+  } else {
+    data.push({ name: nickname, score });
+  }
+
+  data.sort((a, b) => b.score - a.score);
+  data = data.slice(0, 10);
+
+  localStorage.setItem("leaders", JSON.stringify(data));
+  renderLeaders();
+}
+
+function renderLeaders() {
+  let data = JSON.parse(localStorage.getItem("leaders") || "[]");
+  document.getElementById("leaders").innerHTML =
+    data.map((d, i) => `${i + 1}. ${d.name}: ${d.score}`).join("<br>");
 }
 
 /* ---------- CONTROLS ---------- */
 
 document.getElementById("playBtn").onclick = startGame;
 document.getElementById("againBtn").onclick = startGame;
+document.getElementById("shareBtn").onclick = share;
 
 window.addEventListener("keydown", e => {
   if (e.code === "Space") player.jump();
@@ -207,11 +303,9 @@ window.addEventListener("mousedown", () => {
   if (gameRunning) player.jump();
 });
 
-canvas.addEventListener(
-  "touchstart",
-  e => {
-    e.preventDefault();
-    if (gameRunning) player.jump();
-  },
-  { passive: false }
-);
+window.addEventListener("touchstart", e => {
+  e.preventDefault();
+  if (gameRunning) player.jump();
+}, { passive: false });
+
+renderLeaders();
